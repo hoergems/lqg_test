@@ -39,8 +39,8 @@ HFR::HFR():
 	rrt_goal_bias_ = 0.05;
 	min_max_control_duration_ = std::vector<int>({1, 4});
 	
-	std::string robot_path = "/home/marcus/PhD/scripts/abt/problems/manipulator_discrete/model/test_4dof.urdf";
-	std::string environment_path = "/home/marcus/PhD/scripts/abt/problems/manipulator_discrete/environment/env_4dof.xml";
+	std::string robot_path = "/home/hoe01h/PhD/scripts/abt/problems/manipulator_discrete/model/test_4dof.urdf";
+	std::string environment_path = "/home/hoe01h/PhD/scripts/abt/problems/manipulator_discrete/environment/env_4dof.xml";
 	
 	//create the robot and environment here
 	bool created = robot_environment_->createManipulatorRobot(robot_path);
@@ -48,7 +48,7 @@ HFR::HFR():
 	
 	std::shared_ptr<shared::DynamicPathPlanner> dynamic_path_planner = std::make_shared<shared::DynamicPathPlanner>(false);
 	path_evaluator_->setRobotEnvironment(robot_environment_);
-	path_evaluator_->setDynamicPathPlanner(dynamic_path_planner);
+	//path_evaluator_->setDynamicPathPlanner(dynamic_path_planner);
 	path_evaluator_->setRewardModel(step_penalty_, illegal_move_penalty_, terminal_reward_, discount_factor_);
 	path_evaluator_->setNumSamples(num_evaluation_samples_);
 	
@@ -60,26 +60,28 @@ HFR::HFR():
 	robot_environment_->setControlDuration(0.0333);
 	robot_environment_->setSimulationStepSize(0.001);
 	
-	std::vector<std::vector<double>> goal_states = robot_environment_->loadGoalStatesFromFile("/home/marcus/PhD/scripts/abt/problems/manipulator_discrete/goalstates.txt");
+	std::vector<std::vector<double>> goal_states = robot_environment_->loadGoalStatesFromFile("/home/hoe01h/PhD/scripts/abt/problems/manipulator_discrete/goalstates.txt");
 	cout << "len goal states: " << goal_states.size() << endl;
 	std::vector<double> goal_area;
 	robot_environment_->getGoalArea(goal_area);
 	std::vector<double> ee_goal_position({goal_area[0], goal_area[1], goal_area[2]});
 	
-	shared::ManipulatorPathPlannerOptions options;
+	std::shared_ptr<shared::PathPlannerOptions> options =
+			std::make_shared<shared::ManipulatorPathPlannerOptions>();
 	
-	options.goal_states = goal_states;
-	options.ee_goal_position = ee_goal_position;
-	options.goal_radius = goal_area[3];
-	options.control_sampler = "discrete";
-	options.addIntermediateStates = true;
-	options.numControlSamples = num_control_samples_;
-	options.RRTGoalBias = 0.05;
-	options.min_max_control_durations = min_max_control_duration_;			
+	options->planning_algorithm = "RRT";
+	options->goal_states = goal_states;
+	static_cast<shared::ManipulatorPathPlannerOptions *>(options.get())->ee_goal_position = ee_goal_position;
+	options->goal_radius = goal_area[3];
+	options->control_sampler = "discrete";
+	options->addIntermediateStates = true;
+	options->numControlSamples = num_control_samples_;
+	options->RRTGoalBias = 0.05;
+	options->min_max_control_durations = min_max_control_duration_;			
 	
 	dynamic_path_planner->setup(robot_environment_,				                
 								"RRT");
-	boost::shared_ptr<shared::GoalRegion> goal_region = 
+	ompl::base::GoalPtr goal_region = 
 			shared::makeManipulatorGoalRegion(dynamic_path_planner->getSpaceInformation(),
 			                                  robot_environment_,
 			                                  goal_states,
@@ -117,13 +119,14 @@ HFR::HFR():
 	unsigned int current_step = 1;
 	const std::vector<double> start_state({0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
 	double timeout = 10.0;
-	unsigned int num_threads = 1;
+	unsigned int num_threads = 4;
 	
 	path_evaluator_->planAndEvaluatePaths(start_state, 
 			                              P_t, 
 			                              current_step,
 			                              timeout,
-			                              num_threads);
+			                              num_threads,
+										  options);
 	
 	assert(!robot_environment_->getRobot() == false && "Robot is nullptr!!!");	
 	assert(loaded_environment == true && "Couldn't load environment");
