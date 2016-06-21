@@ -106,7 +106,7 @@ if(PKG_CONFIG_FOUND)
        message(FATAL_ERROR "KALMAN_FILTER could not be found")
     endif()
     include_directories(${KALMAN_FILTER_INCLUDE_DIRS})
-    link_directories(${KALMAN_FILTER_LIBRARY_DIRS})     
+    #link_directories(${KALMAN_FILTER_LIBRARY_DIRS})     
 endif()
 
 add_executable(lqg_test
@@ -120,8 +120,7 @@ target_link_libraries (lqg_test
                        ${ROBOTS_LIBRARIES}
                        ${ROBOT_ENVIRONMENT_LIBRARIES}
                        ${FCL_LIBRARIES}
-                       ${PATH_PLANNER_LIBRARIES}
-                       ${KALMAN_FILTER_LIBRARIES}
+                       ${PATH_PLANNER_LIBRARIES}                       
                        ${TCLAP_LIBRARIES})
 
 

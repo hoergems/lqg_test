@@ -21,17 +21,17 @@ struct ManipulatorOptions : public shared::SharedOptions {
     ManipulatorOptions() = default;
     virtual ~ManipulatorOptions() = default;
     
-    double exitReward = 0.0;
+    double exitReward = 1000.0;
     
-    double illegalMovePenalty = 0.0;
+    double illegalMovePenalty = 500.0;
 
-    double illegalActionPenalty = 0.0;    
+    double illegalActionPenalty = 500.0;    
 
     double stepPenalty = 1.0;
 
     double process_covariance = 0.0;
 
-    double observation_covariance = 0.0;
+    double observation_covariance = 0.01;
     
     int num_input_steps = 3;
     
@@ -61,7 +61,7 @@ struct ManipulatorOptions : public shared::SharedOptions {
     
     bool enforce_constraints = false;
     
-    std::vector<double> init_state;
+    std::vector<double> init_state = std::vector<double>({0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
     
     bool dynamic_problem = false;
     
@@ -99,7 +99,7 @@ struct ManipulatorOptions : public shared::SharedOptions {
 
     std::string robot_path = "/home/marcus/PhD/scripts/abt/problems/manipulator_discrete/model/test_4dof.urdf";
     
-    std::string logPath = "";
+    std::string logPath = "/home/marcus/PhD/scripts/lqg_test/build/log.log";
     
     std::string policyPath = "";
     
@@ -122,7 +122,7 @@ struct ManipulatorOptions : public shared::SharedOptions {
     
     std::string control_sampler = "discrete";
     
-    
+    bool add_intermediate_states = true;
     
     static std::unique_ptr<options::OptionParser> makeParser(bool simulating) {        
         std::unique_ptr<options::OptionParser> parser = SharedOptions::makeParser(simulating,

@@ -205,7 +205,7 @@ struct SharedOptions: public solver::Options {
                 "i", "histories-per-step",
                 "number of episodes to sample for each step; 0=>wait for timeout", "int");
 
-        parser->addOptionWithDefault<double>("ABT", "stepTimeout", &Options::stepTimeout, 0.0);
+        parser->addOptionWithDefault<double>("ABT", "stepTimeout", &Options::stepTimeout, 2.0);
         parser->addValueArg<double>("ABT", "stepTimeout", &Options::stepTimeout,
                 "t", "timeout", "step timeout in milliseconds; 0=>no timeout", "real");
 

@@ -29,13 +29,41 @@ class HFR{
 public:
 	HFR(std::shared_ptr<OptionsType> &robot_options,
 	    std::shared_ptr<shared::RobotEnvironment> &robot_environment,
-	    std::shared_ptr<shared::PathEvaluator> &path_evaluator,
+	    std::shared_ptr<shared::PathEvaluator<OptionsType>> &path_evaluator,
 	    std::shared_ptr<shared::DynamicPathPlanner> &dynamic_path_planner):
 		options_(robot_options),
 		robot_environment_(robot_environment),
 		path_evaluator_(path_evaluator),		
 		dynamic_path_planner_(dynamic_path_planner) {
 		
+	}
+	
+	void runSimulation(std::ofstream &os) {
+		for (size_t i = 0; i < options_->nRuns; i++) {
+			simulate(os);
+		}
+	}
+	
+	void simulate(std::ofstream &os) {
+		bool canDoSimulation = true;
+		
+		Eigen::MatrixXd P_t = Eigen::MatrixXd::Zero(robot_environment_->getRobot()->getStateSpaceDimension(),
+				                                    robot_environment_->getRobot()->getStateSpaceDimension());
+		unsigned int current_step = 0;
+		unsigned int num_threads = 3;
+		std::shared_ptr<shared::PathEvaluationResult> res;
+		path_evaluator_->planAndEvaluatePaths(options_->init_state,
+				                              P_t,
+				                              current_step,
+				                              num_threads,
+				                              res);
+		if (res) {
+			cout << res->path_objective << endl;
+		}
+		
+		//while (canDoSimulation) {
+		//	cout << "hello" << endl;
+		//}
 	}
 	
 	void setDynamicPathPlanner(std::shared_ptr<shared::DynamicPathPlanner> &dynamic_path_planner) {
@@ -119,7 +147,7 @@ private:
 	
 	std::shared_ptr<shared::RobotEnvironment> robot_environment_;
 	
-	std::shared_ptr<shared::PathEvaluator> path_evaluator_;
+	std::shared_ptr<shared::PathEvaluator<OptionsType>> path_evaluator_;
 	
 };
 

@@ -4,6 +4,9 @@
 #include <kalman_filter/path_evaluator.hpp>
 #include <robot_environment/robot_environment.hpp>
 
+using std::cout;
+using std::endl;
+
 namespace utils {
 
 template<class OptionsType>
@@ -33,6 +36,7 @@ std::shared_ptr<shared::DynamicPathPlanner> makeDynamicPathPlanner(std::shared_p
 	std::vector<double> goal_area;
 	robot_environment->getGoalArea(goal_area);
 	std::vector<double> goal_position({goal_area[0], goal_area[1], goal_area[2]});
+	
 	double goal_radius = goal_area[3];
 	std::vector<std::vector<double>> goal_states = robot_environment->loadGoalStatesFromFile(options->goal_states_path);
 	ompl::base::GoalPtr goal_region = 
@@ -51,9 +55,9 @@ std::shared_ptr<shared::DynamicPathPlanner> makeDynamicPathPlanner(std::shared_p
 }
 
 template<class OptionsType>
-std::shared_ptr<shared::PathEvaluator> makePathEvaluator(std::shared_ptr<shared::RobotEnvironment> &robot_environment,
+std::shared_ptr<shared::PathEvaluator<OptionsType>> makePathEvaluator(std::shared_ptr<shared::RobotEnvironment> &robot_environment,
 		                                                 std::shared_ptr<OptionsType> &options) {
-	std::shared_ptr<shared::PathEvaluator> path_evaluator = std::make_shared<shared::PathEvaluator>();
+	std::shared_ptr<shared::PathEvaluator<OptionsType>> path_evaluator = std::make_shared<shared::PathEvaluator<OptionsType>>(options);
 	path_evaluator->setRobotEnvironment(robot_environment);
 	path_evaluator->setRewardModel(options->stepPenalty, 
 			                       options->illegalMovePenalty, 
