@@ -9,6 +9,14 @@ using std::endl;
 
 namespace utils {
 
+void print_vector(std::vector<double> &vec, std::string str) {
+	cout << str << ": ";
+	for (auto &k: vec) {
+		cout << k << ", ";
+	}
+	cout << endl;
+}
+
 template<class OptionsType>
 Eigen::MatrixXd getC(std::shared_ptr<shared::RobotEnvironment> &robot_environment,
 		             std::shared_ptr<OptionsType> &options) {

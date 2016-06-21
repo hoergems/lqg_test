@@ -17,6 +17,8 @@ public:
 	
 	std::vector<double> resulting_state;
 	
+	std::vector<double> observation;
+	
 	double reward;
 	
 	bool collided;
@@ -44,6 +46,8 @@ public:
 		}
 	}
 	
+	
+	
 	void simulate(std::ofstream &os) {
 		bool canDoSimulation = true;
 		
@@ -51,14 +55,73 @@ public:
 				                                    robot_environment_->getRobot()->getStateSpaceDimension());
 		unsigned int current_step = 0;
 		unsigned int num_threads = 3;
-		std::shared_ptr<shared::PathEvaluationResult> res;
-		path_evaluator_->planAndEvaluatePaths(options_->init_state,
+		std::shared_ptr<shared::PathEvaluationResult> eval_res;		
+		std::vector<double> current_state = options_->init_state;		
+		utils::print_vector(current_state, "current_state");
+		path_evaluator_->planAndEvaluatePaths(current_state,
 				                              P_t,
 				                              current_step,
 				                              num_threads,
-				                              res);
-		if (res) {
-			cout << res->path_objective << endl;
+				                              eval_res);		
+		std::vector<double> x_estimated = options_->init_state;
+		std::vector<double> u = eval_res->trajectory.us[0];
+		std::vector<double> x_predicted;
+		std::vector<double> x_predicted_temp;
+		Eigen::MatrixXd P_predicted(P_t.rows(), P_t.cols());
+		if (eval_res) {			
+			while (true) {
+				//Get linear model matrices
+				
+				std::vector<Eigen::MatrixXd> A_B_V_H_W_M_N = path_evaluator_->getLinearModelMatricesState(x_estimated, 
+						                                                                                  eval_res->trajectory.us[0],
+						                                                                                  eval_res->trajectory.control_durations[0]);
+				
+				path_evaluator_->getKalmanFilter()->ekfPredictState(robot_environment_,
+						                                            x_estimated,
+						                                            u,
+						                                            options_->control_duration,
+						                                            options_->simulation_step_size,
+						                                            A_B_V_H_W_M_N[0],
+						                                            A_B_V_H_W_M_N[1],
+						                                            A_B_V_H_W_M_N[2],
+						                                            A_B_V_H_W_M_N[5],
+						                                            P_t,
+						                                            x_predicted_temp,
+						                                            P_predicted);
+				
+				//check if x_predicted_collides
+				bool p_collides = static_cast<shared::MotionValidator *>(dynamic_path_planner_->getMotionValidator().get())->collidesDiscrete(x_predicted_temp);
+				if (p_collides) {
+					x_predicted = x_estimated;
+				}
+				else {
+					x_predicted = x_predicted_temp;
+				}
+				
+				//Execute path for 1 step
+				std::shared_ptr<shared::SimulationStepResult> simulation_step_result = simulateStep(current_state, u, x_estimated);
+				current_step += 1;
+				
+				//Plan new trajectories from predicted state
+				path_evaluator_->planAndEvaluatePaths(x_predicted,
+								                      P_predicted,
+								                      current_step,
+								                      num_threads,
+								                      eval_res);
+				
+				//Filter update
+				path_evaluator_->getKalmanFilter()->kalmanUpdate(x_predicted,						     
+						     simulation_step_result->observation, 
+						     A_B_V_H_W_M_N[3],
+						     P_predicted,
+						     A_B_V_H_W_M_N[4],
+						     A_B_V_H_W_M_N[6],
+						     x_estimated,
+						     P_t);
+				
+				cout << eval_res->path_objective << endl;
+				break;
+			}
 		}
 		
 		//while (canDoSimulation) {
@@ -121,6 +184,8 @@ public:
 					                                   options_->control_duration,					                                   
 					                                   options_->simulation_step_size,
 					                                   propagation_result);
+		std::vector<double> next_state;
+		
 		//Check for collision
 		bool collided = static_cast<shared::MotionValidator *>(dynamic_path_planner_->getMotionValidator().get())->collidesContinuous(current_state, propagation_result);
 		result->collided = collided;
@@ -129,12 +194,18 @@ public:
 		bool terminal = false;
 		if (collided) {
 			//We need to handle collisions here
+			robot_environment_->getRobot()->makeNextStateAfterCollision(current_state, propagation_result, next_state);
 		}
 		else {
+			next_state = propagation_result;
 			terminal = robot_environment_->getRobot()->isTerminal(propagation_result);
 		}
 		
-		result->resulting_state = propagation_result;
+		//Generate an observation
+		std::vector<double> observation;		
+		robot_environment_->makeObservation(next_state, observation);
+		result->resulting_state = next_state;
+		result->observation = observation;
 		result->terminal = terminal;
 		
 		return result;
