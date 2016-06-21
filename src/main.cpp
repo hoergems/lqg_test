@@ -1,4 +1,4 @@
-#include "include/hfr.hpp"
+#include "include/simulate_hfr.hpp"
 #include "ManipulatorOptions.hpp"
 #include <robots/ManipulatorRobot.hpp>
 
@@ -18,11 +18,9 @@ int main( int argc, const char* argv[] )
 	//std::unique_ptr<options::OptionParser> parser = manipulator::ManipulatorOptions::makeParser(true);
 	//parser->setOptions(&options);
 	
-	std::unique_ptr<options::OptionParser> parser = manipulator::ManipulatorOptions::makeParser(true);
-	manipulator::ManipulatorOptions options;
-	parser->setOptions(&options);
+	return simulate<shared::ManipulatorRobot, manipulator::ManipulatorOptions>();
 	
-	std::shared_ptr<manipulator::ManipulatorOptions> options_manipulator = std::make_shared<manipulator::ManipulatorOptions>(options);
-	shared::HFR<shared::ManipulatorRobot, manipulator::ManipulatorOptions> hfr(options_manipulator);
+	//std::shared_ptr<manipulator::ManipulatorOptions> options_manipulator = std::make_shared<manipulator::ManipulatorOptions>(options);
+	//shared::HFR<shared::ManipulatorRobot, manipulator::ManipulatorOptions> hfr(options_manipulator);
 	
 }

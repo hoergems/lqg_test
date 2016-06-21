@@ -9,33 +9,6 @@
 
 namespace shared {
 
-class RobotOptions {
-public:
-	RobotOptions() {};
-	
-	double process_error;
-	
-	double path_deviation_cost;
-	
-	double simulation_step_size;
-	
-	double control_duration;
-	
-	std::string robot_path;
-	
-	std::string environment_path;
-	
-	
-};
-
-class ManipulatorOptions: public RobotOptions {
-public:
-	ManipulatorOptions():
-	RobotOptions(){
-		
-	}
-};
-
 class SimulationStepResult {
 public:
 	SimulationStepResult() {
@@ -47,44 +20,26 @@ public:
 	double reward;
 	
 	bool collided;
+	
+	bool terminal;
 };
 
 template<class RobotType, class OptionsType>
 class HFR{
 public:
-	HFR(std::shared_ptr<OptionsType> &robot_options):
-		robot_environment_(new shared::RobotEnvironment()),
-		path_evaluator_(new shared::PathEvaluator()),
-		path_deviation_cost_(robot_options->path_deviation_cost),
-		control_deviation_cost_(0.0),
-		step_penalty_(0.0),	
-		illegal_move_penalty_(0.0),
-		terminal_reward_(0.0),
-		discount_factor_(0.0),
-		num_evaluation_samples_(0),
-		num_control_samples_(0),
-		rrt_goal_bias_(0.0),
-		min_max_control_duration_(),
-		process_error_(0.0),
-		observation_error_(0.0),
-		simulation_step_size_(0.0),
-		process_distribution_(nullptr),			
-		observation_distribution_(nullptr){
+	HFR(std::shared_ptr<OptionsType> &robot_options,
+	    std::shared_ptr<shared::RobotEnvironment> &robot_environment,
+	    std::shared_ptr<shared::PathEvaluator> &path_evaluator,
+	    std::shared_ptr<shared::DynamicPathPlanner> &dynamic_path_planner):
+		options_(robot_options),
+		robot_environment_(robot_environment),
+		path_evaluator_(path_evaluator),		
+		dynamic_path_planner_(dynamic_path_planner) {
 		
 	}
 	
-	Eigen::MatrixXd getC() {
-		int state_space_dimension = robot_environment_->getRobot()->getStateSpaceDimension();
-		Eigen::MatrixXd C = Eigen::MatrixXd::Identity(state_space_dimension, state_space_dimension);
-		C = path_deviation_cost_ * C;
-		return C;
-	}
-	
-	Eigen::MatrixXd getD() {
-		int control_space_dimension = robot_environment_->getRobot()->getControlSpaceDimension();
-		Eigen::MatrixXd D = Eigen::MatrixXd::Identity(control_space_dimension, control_space_dimension);
-	    D = control_deviation_cost_ * D;	
-		return D;
+	void setDynamicPathPlanner(std::shared_ptr<shared::DynamicPathPlanner> &dynamic_path_planner) {
+		dynamic_path_planner_ = dynamic_path_planner;
 	}
 	
 	Eigen::MatrixXd build_covariance_matrix(std::string covariance_type, double &error) {
@@ -118,8 +73,7 @@ public:
 	}
 	
 	std::shared_ptr<shared::SimulationStepResult> simulateStep(std::vector<double> &current_state,
-			                                                   std::vector<double> &action,
-			                                                   double &control_duration,
+			                                                   std::vector<double> &action,			                                                   
 			                                                   std::vector<double> &estimated_state) {
 		std::shared_ptr<shared::SimulationStepResult> result(new shared::SimulationStepResult);
 			
@@ -130,50 +84,42 @@ public:
 		for (size_t i = 0; i < action.size(); i++) {
 			control_error.push_back(sample(i));
 		}
-		/**robot_environment_->getRobot()->propagateState(current_state,
-					                                       action,
-					                                       control_error,
-					                                       control_duration,
-					                                       )*/
+		
+		std::vector<double> propagation_result;
+		
+		robot_environment_->getRobot()->propagateState(current_state,
+					                                   action,
+					                                   control_error,
+					                                   options_->control_duration,					                                   
+					                                   options_->simulation_step_size,
+					                                   propagation_result);
+		//Check for collision
+		bool collided = static_cast<shared::MotionValidator *>(dynamic_path_planner_->getMotionValidator().get())->collidesContinuous(current_state, propagation_result);
+		result->collided = collided;
+		
+		//Check for terminal if we're not collided
+		bool terminal = false;
+		if (collided) {
+			//We need to handle collisions here
+		}
+		else {
+			terminal = robot_environment_->getRobot()->isTerminal(propagation_result);
+		}
+		
+		result->resulting_state = propagation_result;
+		result->terminal = terminal;
+		
 		return result;
 	}
 	
 private:
+	std::shared_ptr<shared::DynamicPathPlanner> dynamic_path_planner_;
+	
+	std::shared_ptr<OptionsType> options_;
+	
 	std::shared_ptr<shared::RobotEnvironment> robot_environment_;
 	
 	std::shared_ptr<shared::PathEvaluator> path_evaluator_;
-	
-	double path_deviation_cost_;
-	
-	double control_deviation_cost_;
-	
-	double step_penalty_;
-	
-	double terminal_reward_;
-	
-	double illegal_move_penalty_;
-	
-	double discount_factor_;
-	
-	unsigned int num_evaluation_samples_;
-	
-	unsigned int num_control_samples_;
-	
-	double rrt_goal_bias_;
-	
-	double process_error_;
-	
-	double observation_error_;
-	
-	double control_duration_;
-	
-	double simulation_step_size_;
-	
-	std::vector<int> min_max_control_duration_;
-	
-	std::shared_ptr<shared::EigenMultivariateNormal<double>> process_distribution_;
-	    
-	std::shared_ptr<shared::EigenMultivariateNormal<double>> observation_distribution_;
 	
 };
 

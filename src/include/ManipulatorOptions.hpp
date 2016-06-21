@@ -53,6 +53,8 @@ struct ManipulatorOptions : public shared::SharedOptions {
     
     std::string planner = "RRTConnect";
     
+    std::string dynamic_planner = "RRT";
+    
     bool continuous_collision_check = false;
     
     bool check_linear_path = false;
@@ -68,6 +70,9 @@ struct ManipulatorOptions : public shared::SharedOptions {
     bool show_viewer = false;
     
     double simulation_step_size = 0.001;
+    
+    double control_duration = 0.0333;
+    
     double planning_velocity = 2.0;
     
     double max_observation_distance = 3.14;
@@ -90,15 +95,34 @@ struct ManipulatorOptions : public shared::SharedOptions {
     
     std::string terrains_path = EXPAND_AND_QUOTE(ROOT_PATH) "/problems/manipulator_discrete/terrains";
 
-    std::string env_path = "";
+    std::string env_path = "/home/marcus/PhD/scripts/abt/problems/manipulator_discrete/environment/env_4dof.xml";
 
-    std::string robot_path = "";
+    std::string robot_path = "/home/marcus/PhD/scripts/abt/problems/manipulator_discrete/model/test_4dof.urdf";
     
     std::string logPath = "";
     
     std::string policyPath = "";
     
+    std::string goal_states_path = "/home/marcus/PhD/scripts/abt/problems/manipulator_discrete/goalstates.txt";
+    
+    //for HFR
+    
     double path_deviation_cost = 500.0;
+    
+    double control_deviation_cost = 1.0;
+    
+    unsigned int numEvaluationSamples = 200;
+    
+    //RRT options
+    unsigned int numControlSamples = 1;
+    
+    double rrtGoalBias = 0.05;
+    
+    std::vector<int> min_max_control_duration = std::vector<int>({1, 4});
+    
+    std::string control_sampler = "discrete";
+    
+    
     
     static std::unique_ptr<options::OptionParser> makeParser(bool simulating) {        
         std::unique_ptr<options::OptionParser> parser = SharedOptions::makeParser(simulating,
@@ -124,6 +148,8 @@ struct ManipulatorOptions : public shared::SharedOptions {
         parser->addOption<bool>("RRT", "rrt_verb", &ManipulatorOptions::verbose_rrt);
         parser->addOption<double>("RRT", "stretching_factor", &ManipulatorOptions::stretching_factor);        
         parser->addOption<std::string>("RRT", "planner", &ManipulatorOptions::planner);
+        parser->addOption<std::string>("RRT", "dynamicPlanner", &ManipulatorOptions::dynamic_planner);
+        parser->addOption<std::string>("RRT", "controlSampler", &ManipulatorOptions::control_sampler);
         parser->addOption<bool>("RRT", "continuous_collision_check", &ManipulatorOptions::continuous_collision_check);
         parser->addOption<bool>("RRT", "check_linear_path", &ManipulatorOptions::check_linear_path);
         parser->addOption<double>("RRT", "planning_velocity", &ManipulatorOptions::planning_velocity);
@@ -144,10 +170,14 @@ struct ManipulatorOptions : public shared::SharedOptions {
         parser->addOption<unsigned int>("ABT", "numEffectiveParticles", &ManipulatorOptions::num_effective_particles);
         parser->addOption<std::string>("problem", "environment_path", &ManipulatorOptions::env_path);
         parser->addOption<std::string>("problem", "robot_path", &ManipulatorOptions::robot_path);
+        parser->addOption<std::string>("problem", "goal_states_path", &ManipulatorOptions::goal_states_path);
         parser->addOption<std::string>("problem", "logPath", &ManipulatorOptions::logPath);
         parser->addOption<std::string>("problem", "policyPath", &ManipulatorOptions::policyPath);
         parser->addOption<std::string>("problem", "dynamicModel", &ManipulatorOptions::dynamicModel);
         parser->addOption<double>("problem", "pathDeviationCost", &ManipulatorOptions::path_deviation_cost);
+        parser->addOption<double>("problem", "controlDeviationCost", &ManipulatorOptions::path_deviation_cost);  
+        parser->addOption<unsigned int>("problem", "numEvaluationSamples", &ManipulatorOptions::numEvaluationSamples);
+        parser->addOption<double>("problem", "controlDuration", &ManipulatorOptions::control_duration); 
         
         //env_path = EXPAND_AND_QUOTE(ROOT_PATH) "/problems/manipulator_discrete/environment/" + ManipulatorOptions::environment_file;
         //robot_path = EXPAND_AND_QUOTE(ROOT_PATH) "/problems/manipulator_discrete/model/" + ManipulatorOptions::robot_file;
