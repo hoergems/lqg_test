@@ -29,7 +29,7 @@ struct ManipulatorOptions : public shared::SharedOptions {
 
     double stepPenalty = 1.0;
 
-    double process_covariance = 0.0;
+    double process_covariance = 0.5;
 
     double observation_covariance = 0.01;
     

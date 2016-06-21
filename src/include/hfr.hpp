@@ -54,7 +54,7 @@ public:
 		Eigen::MatrixXd P_t = Eigen::MatrixXd::Zero(robot_environment_->getRobot()->getStateSpaceDimension(),
 				                                    robot_environment_->getRobot()->getStateSpaceDimension());
 		unsigned int current_step = 0;
-		unsigned int num_threads = 3;
+		unsigned int num_threads = 7;
 		std::shared_ptr<shared::PathEvaluationResult> eval_res;		
 		std::vector<double> current_state = options_->init_state;		
 		utils::print_vector(current_state, "current_state");
@@ -62,14 +62,16 @@ public:
 				                              P_t,
 				                              current_step,
 				                              num_threads,
-				                              eval_res);		
-		std::vector<double> x_estimated = options_->init_state;
-		std::vector<double> u = eval_res->trajectory.us[0];
-		std::vector<double> x_predicted;
-		std::vector<double> x_predicted_temp;
-		Eigen::MatrixXd P_predicted(P_t.rows(), P_t.cols());
-		if (eval_res) {			
+				                              eval_res);
+		if (eval_res) {
+			std::vector<double> x_estimated = options_->init_state;
+			std::vector<double> u = eval_res->trajectory.us[0];
+			std::vector<double> x_predicted;
+			std::vector<double> x_predicted_temp;
+			Eigen::MatrixXd P_predicted(P_t.rows(), P_t.cols());
+					
 			while (true) {
+				cout << "hello" << endl;
 				//Get linear model matrices
 				
 				std::vector<Eigen::MatrixXd> A_B_V_H_W_M_N = path_evaluator_->getLinearModelMatricesState(x_estimated, 
@@ -98,28 +100,55 @@ public:
 					x_predicted = x_predicted_temp;
 				}
 				
+				utils::print_vector(x_predicted, "x_predicted: ");
+				utils::print_vector(eval_res->trajectory.xs[1], "xs[i + 1]");
+				
 				//Execute path for 1 step
 				std::shared_ptr<shared::SimulationStepResult> simulation_step_result = simulateStep(current_state, u, x_estimated);
 				current_step += 1;
-				
+				utils::print_vector(simulation_step_result->resulting_state, "res state");
 				//Plan new trajectories from predicted state
+				std::shared_ptr<shared::PathEvaluationResult> eval_res_new;	
 				path_evaluator_->planAndEvaluatePaths(x_predicted,
 								                      P_predicted,
 								                      current_step,
 								                      num_threads,
-								                      eval_res);
+								                      eval_res_new);
 				
 				//Filter update
+				std::vector<double> x_estimated_temp;
 				path_evaluator_->getKalmanFilter()->kalmanUpdate(x_predicted,						     
 						     simulation_step_result->observation, 
 						     A_B_V_H_W_M_N[3],
 						     P_predicted,
 						     A_B_V_H_W_M_N[4],
 						     A_B_V_H_W_M_N[6],
-						     x_estimated,
+						     x_estimated_temp,
 						     P_t);
 				
-				cout << eval_res->path_objective << endl;
+				//Make sure x_estimated is okay
+				robot_environment_->getRobot()->enforceConstraints(x_estimated_temp);
+				bool e_collides = static_cast<shared::MotionValidator *>(dynamic_path_planner_->getMotionValidator().get())->collidesDiscrete(x_estimated_temp);
+				if (e_collides) {
+					std::vector<double> x_estimated_next;
+					robot_environment_->getRobot()->makeNextStateAfterCollision(x_estimated, x_estimated_temp, x_estimated_next);
+					x_estimated = x_estimated_next;
+				}				
+				else {
+					x_estimated = x_estimated_temp;
+				}
+				utils::print_vector(x_estimated, "x_estimate");
+				//Adjust plan
+				std::shared_ptr<shared::PathEvaluationResult> eval_res_adjusted;
+				path_evaluator_->adjustAndEvaluatePath(eval_res->trajectory,
+						                               x_estimated,
+						                               P_t,
+						                               current_step,
+						                               eval_res_adjusted);
+				
+				
+				
+				cout << eval_res_adjusted->path_objective << endl;
 				break;
 			}
 		}
