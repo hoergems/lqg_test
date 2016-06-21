@@ -69,6 +69,15 @@ if(PKG_CONFIG_FOUND)
     link_directories(${ROBOT_ENVIRONMENT_LIBRARY_DIRS})     
 endif()
 
+############################# LOAD TCLAP #############################
+find_package (TCLAP)
+if (NOT TCLAP_FOUND)
+message(${TCLAP_INCLUDE_DIRS})
+include_directories(${TCLAP_INCLUDE_DIRS})
+endif()
+
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/include/)
+
 ############################# LOAD PATH_PLANNER #############################
 if(PKG_CONFIG_FOUND)    
     pkg_check_modules(PATH_PLANNER path_planner)
@@ -101,8 +110,9 @@ if(PKG_CONFIG_FOUND)
 endif()
 
 add_executable(lqg_test
-               ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
-               ${CMAKE_CURRENT_SOURCE_DIR}/src/hfr.cpp)
+               ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp               
+               ${CMAKE_CURRENT_SOURCE_DIR}/src/option_parser.cpp
+               ${CMAKE_CURRENT_SOURCE_DIR}/src/ini.c)
                
 target_link_libraries (lqg_test                    
                        ${Boost_LIBRARIES}
@@ -111,6 +121,7 @@ target_link_libraries (lqg_test
                        ${ROBOT_ENVIRONMENT_LIBRARIES}
                        ${FCL_LIBRARIES}
                        ${PATH_PLANNER_LIBRARIES}
-                       ${KALMAN_FILTER_LIBRARIES})
+                       ${KALMAN_FILTER_LIBRARIES}
+                       ${TCLAP_LIBRARIES})
 
 
