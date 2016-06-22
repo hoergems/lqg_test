@@ -109,12 +109,26 @@ if(PKG_CONFIG_FOUND)
     #link_directories(${KALMAN_FILTER_LIBRARY_DIRS})     
 endif()
 
-add_executable(lqg_test
-               ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp               
+add_executable(lqg_test_manipulator
+               ${CMAKE_CURRENT_SOURCE_DIR}/src/main_manipulator.cpp               
                ${CMAKE_CURRENT_SOURCE_DIR}/src/option_parser.cpp
                ${CMAKE_CURRENT_SOURCE_DIR}/src/ini.c)
                
-target_link_libraries (lqg_test                    
+add_executable(lqg_test_dubin
+               ${CMAKE_CURRENT_SOURCE_DIR}/src/main_dubin.cpp               
+               ${CMAKE_CURRENT_SOURCE_DIR}/src/option_parser.cpp
+               ${CMAKE_CURRENT_SOURCE_DIR}/src/ini.c)
+               
+target_link_libraries (lqg_test_manipulator                    
+                       ${Boost_LIBRARIES}
+                       ${PYTHON_LIBRARIES}
+                       ${ROBOTS_LIBRARIES}
+                       ${ROBOT_ENVIRONMENT_LIBRARIES}
+                       ${FCL_LIBRARIES}
+                       ${PATH_PLANNER_LIBRARIES}                       
+                       ${TCLAP_LIBRARIES})
+                       
+target_link_libraries (lqg_test_dubin                  
                        ${Boost_LIBRARIES}
                        ${PYTHON_LIBRARIES}
                        ${ROBOTS_LIBRARIES}

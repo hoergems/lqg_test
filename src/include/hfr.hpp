@@ -2,10 +2,11 @@
 #define _HFR_HPP_
 #include <robot_environment/robot_environment.hpp>
 #include <path_planner/dynamic_path_planner.hpp>
-#include <path_planner/Options.hpp>
 #include <kalman_filter/path_evaluator.hpp>
 #include <Eigen/Dense>
 #include "ManipulatorOptions.hpp"
+#include "DubinOptions.hpp"
+#include <boost/timer.hpp>
 
 namespace shared {
 
@@ -14,6 +15,10 @@ public:
 	SimulationStepResult() {
 		
 	}
+	
+	std::vector<double> current_state;
+	
+	std::vector<double> action;
 	
 	std::vector<double> resulting_state;
 	
@@ -52,7 +57,7 @@ public:
 		Eigen::MatrixXd P_t = Eigen::MatrixXd::Zero(robot_environment_->getRobot()->getStateSpaceDimension(),
 				                                    robot_environment_->getRobot()->getStateSpaceDimension());
 		unsigned int current_step = 0;
-		unsigned int num_threads = 7;
+		unsigned int num_threads = 1;
 		std::shared_ptr<shared::PathEvaluationResult> eval_res;		
 		std::vector<double> current_state = options_->init_state;		
 		utils::print_vector(current_state, "current_state");
@@ -61,28 +66,34 @@ public:
 				                              current_step,
 				                              num_threads,
 				                              eval_res);
-		if (eval_res) {
+		if (eval_res) {			
 			std::vector<double> x_estimated = options_->init_state;
-			std::vector<double> u = eval_res->trajectory.us[0];
-			std::vector<double> x_predicted;
+			//std::vector<double> u = eval_res->trajectory.us[0];
+			std::vector<double> x_predicted = current_state;
 			std::vector<double> x_predicted_temp;
 			Eigen::MatrixXd P_predicted(P_t.rows(), P_t.cols());
+			
+			utils::print_vector(current_state, "current_state");
+		    utils::print_vector(x_predicted, "x_predicted");
+		    utils::print_vector(x_estimated, "x_estimate");
 					
 			while (true) {
-				cout << "hello" << endl;
+				cout << "---------------------------------" << endl;
 				//Get linear model matrices
 				
 				std::vector<Eigen::MatrixXd> A_B_V_H_W_M_N = path_evaluator_->getLinearModelMatricesState(x_estimated, 
 						                                                                                  eval_res->trajectory.us[0],
 						                                                                                  eval_res->trajectory.control_durations[0]);
 				
+				
+				//Predict the next state
+				//utils::print_vector(eval_res->trajectory.control_durations, "control durations");
 				path_evaluator_->getKalmanFilter()->ekfPredictState(robot_environment_,
 						                                            x_estimated,
-						                                            u,
-						                                            options_->control_duration,
+						                                            eval_res->trajectory.us[0],
+						                                            eval_res->trajectory.control_durations[0],
 						                                            options_->simulation_step_size,
-						                                            A_B_V_H_W_M_N[0],
-						                                            A_B_V_H_W_M_N[1],
+						                                            A_B_V_H_W_M_N[0],						                                            
 						                                            A_B_V_H_W_M_N[2],
 						                                            A_B_V_H_W_M_N[5],
 						                                            P_t,
@@ -98,15 +109,23 @@ public:
 					x_predicted = x_predicted_temp;
 				}
 				
-				utils::print_vector(x_predicted, "x_predicted: ");
+				utils::print_vector(current_state, "current_state");
+				utils::print_vector(x_predicted, "x_predicted");				
 				utils::print_vector(eval_res->trajectory.xs[1], "xs[i + 1]");
-				
 				//Execute path for 1 step
-				std::shared_ptr<shared::SimulationStepResult> simulation_step_result = simulateStep(current_state, u, x_estimated);
-				current_step += 1;
-				utils::print_vector(simulation_step_result->resulting_state, "res state");
+				std::shared_ptr<shared::SimulationStepResult> simulation_step_result = simulateStep(current_state, eval_res->trajectory.us[0]);
+				current_state = simulation_step_result->resulting_state;
+				current_step += 1;	
+				
+				utils::print_vector(simulation_step_result->resulting_state, "res state");				
+				
+				if (simulation_step_result->terminal) {
+					cout << "TERMINAL STATE REACHED" << endl;
+					break;
+				}
+				
 				//Plan new trajectories from predicted state
-				std::shared_ptr<shared::PathEvaluationResult> eval_res_new;	
+				std::shared_ptr<shared::PathEvaluationResult> eval_res_new;
 				path_evaluator_->planAndEvaluatePaths(x_predicted,
 								                      P_predicted,
 								                      current_step,
@@ -131,26 +150,35 @@ public:
 					std::vector<double> x_estimated_next;
 					robot_environment_->getRobot()->makeNextStateAfterCollision(x_estimated, x_estimated_temp, x_estimated_next);
 					x_estimated = x_estimated_next;
+					utils::print_vector(x_estimated, "x_estimated after collision");
 				}				
 				else {
 					x_estimated = x_estimated_temp;
 				}
 				utils::print_vector(x_estimated, "x_estimate");
+				cout << "distance to goal: " << robot_environment_->getRobot()->distanceGoal(simulation_step_result->resulting_state) << endl;
 				//Adjust plan
-				std::shared_ptr<shared::PathEvaluationResult> eval_res_adjusted;
+				std::shared_ptr<shared::PathEvaluationResult> eval_res_adjusted;				
 				path_evaluator_->adjustAndEvaluatePath(eval_res->trajectory,
 						                               x_estimated,
 						                               P_t,
 						                               current_step,
 						                               eval_res_adjusted);
+				// Determine the nominal path for the next step
+				if (eval_res_adjusted->path_objective && eval_res_adjusted->path_objective > eval_res->path_objective) {
+					eval_res = eval_res_adjusted;
+					cout << "SWITCH TO ADJUSTED" << endl;
+				}
+				else {
+					eval_res = eval_res_new;
+				}
 				
 				
-				
-				cout << eval_res_adjusted->path_objective << endl;
-				break;
+				cout << eval_res->path_objective << endl;
+				//break;
 			}
 		}
-		
+		cout << "done " << endl; 
 		//while (canDoSimulation) {
 		//	cout << "hello" << endl;
 		//}
@@ -191,10 +219,10 @@ public:
 	}
 	
 	std::shared_ptr<shared::SimulationStepResult> simulateStep(std::vector<double> &current_state,
-			                                                   std::vector<double> &action,			                                                   
-			                                                   std::vector<double> &estimated_state) {
+			                                                   std::vector<double> &action) {
 		std::shared_ptr<shared::SimulationStepResult> result(new shared::SimulationStepResult);
-			
+		result->current_state = current_state;
+		result->action = action;
 		//Sample control error
 		std::vector<double> control_error;
 		Eigen::MatrixXd sample(action.size(), 1);
@@ -205,12 +233,21 @@ public:
 		
 		std::vector<double> propagation_result;
 		
+		/**cout << "=======================" << endl;
+		cout << "PROPAGATION" << endl;
+		utils::print_vector(current_state, "x_in");
+		utils::print_vector(action, "u_in");
+		cout << "control duration " << options_->control_duration << endl;
+		cout << "simulation step size: " << options_->simulation_step_size << endl;*/
+		
 		robot_environment_->getRobot()->propagateState(current_state,
 					                                   action,
 					                                   control_error,
 					                                   options_->control_duration,					                                   
 					                                   options_->simulation_step_size,
 					                                   propagation_result);
+		//utils::print_vector(propagation_result, "propagation result");
+		//cout << "==========================" << endl;
 		std::vector<double> next_state;
 		
 		//Check for collision
@@ -221,6 +258,7 @@ public:
 		bool terminal = false;
 		if (collided) {
 			//We need to handle collisions here
+			cout << "COLLIDED!" << endl;
 			robot_environment_->getRobot()->makeNextStateAfterCollision(current_state, propagation_result, next_state);
 		}
 		else {
