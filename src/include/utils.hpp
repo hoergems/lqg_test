@@ -48,11 +48,9 @@ std::shared_ptr<shared::DynamicPathPlanner> makeDynamicPathPlanner(std::shared_p
 	double goal_radius = goal_area[3];
 	std::vector<std::vector<double>> goal_states = robot_environment->loadGoalStatesFromFile(options->goal_states_path);
 	ompl::base::GoalPtr goal_region = 
-				shared::makeManipulatorGoalRegion(dynamic_path_planner->getSpaceInformation(),
+				shared::makeRobotGoalRegion(dynamic_path_planner->getSpaceInformation(),
 				                                  robot_environment,
-				                                  goal_states,
-				                                  goal_position,
-				                                  goal_radius);
+				                                  goal_states);
 	dynamic_path_planner->setGoal(goal_region);	
 	dynamic_path_planner->setControlSampler(options->control_sampler);
 	dynamic_path_planner->addIntermediateStates(true);
@@ -62,10 +60,10 @@ std::shared_ptr<shared::DynamicPathPlanner> makeDynamicPathPlanner(std::shared_p
 	return dynamic_path_planner;
 }
 
-template<class OptionsType>
-std::shared_ptr<shared::PathEvaluator<OptionsType>> makePathEvaluator(std::shared_ptr<shared::RobotEnvironment> &robot_environment,
-		                                                 std::shared_ptr<OptionsType> &options) {
-	std::shared_ptr<shared::PathEvaluator<OptionsType>> path_evaluator = std::make_shared<shared::PathEvaluator<OptionsType>>(options);
+template<class RobotType, class OptionsType>
+std::shared_ptr<shared::PathEvaluator<RobotType, OptionsType>> makePathEvaluator(std::shared_ptr<shared::RobotEnvironment> &robot_environment,
+		                                                                         std::shared_ptr<OptionsType> &options) {
+	std::shared_ptr<shared::PathEvaluator<RobotType, OptionsType>> path_evaluator = std::make_shared<shared::PathEvaluator<RobotType, OptionsType>>(options);
 	path_evaluator->setRobotEnvironment(robot_environment);
 	path_evaluator->setRewardModel(options->stepPenalty, 
 			                       options->illegalMovePenalty, 
@@ -79,10 +77,10 @@ std::shared_ptr<shared::PathEvaluator<OptionsType>> makePathEvaluator(std::share
 	return path_evaluator;
 }
 
-template<class OptionsType>
+template<class RobotType, class OptionsType>
 std::shared_ptr<shared::RobotEnvironment> makeRobotEnvironment(std::shared_ptr<OptionsType> &options) {
 	std::shared_ptr<shared::RobotEnvironment> robot_environment = std::make_shared<shared::RobotEnvironment>();
-	bool created = robot_environment->createManipulatorRobot(options->robot_path);
+	bool created = robot_environment->createRobot<RobotType>(options->robot_path);	
 	bool loaded_environment = robot_environment->loadEnvironment(options->env_path);
 	assert(created == true && "Robot couldn't be loaded");
 	assert(loaded_environment == true && "Environment couldn't be loaded");

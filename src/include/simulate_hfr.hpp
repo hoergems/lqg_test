@@ -17,9 +17,9 @@ int simulate() {
 	parser->setOptions(&options);
 	
 	std::shared_ptr<OptionsType> robot_options = std::make_shared<OptionsType>(options);	
-	std::shared_ptr<shared::RobotEnvironment> robot_environment = utils::makeRobotEnvironment<OptionsType>(robot_options);	
+	std::shared_ptr<shared::RobotEnvironment> robot_environment = utils::makeRobotEnvironment<RobotType, OptionsType>(robot_options);	
 	std::shared_ptr<shared::DynamicPathPlanner> dynamic_path_planner = utils::makeDynamicPathPlanner<OptionsType>(robot_environment, robot_options);	
-	std::shared_ptr<shared::PathEvaluator<OptionsType>> path_evaluator = utils::makePathEvaluator<OptionsType>(robot_environment, robot_options);
+	std::shared_ptr<shared::PathEvaluator<RobotType, OptionsType>> path_evaluator = utils::makePathEvaluator<RobotType, OptionsType>(robot_environment, robot_options);
 	
 	//std::shared_ptr<shared::HFR<RobotType, RobotType>> hfr = std::make_shared<shared::HFR<RobotType, RobotType>>(robot_options);
 	shared::HFR<RobotType, OptionsType> hfr(robot_options, robot_environment, path_evaluator, dynamic_path_planner);

@@ -31,22 +31,20 @@ class HFR{
 public:
 	HFR(std::shared_ptr<OptionsType> &robot_options,
 	    std::shared_ptr<shared::RobotEnvironment> &robot_environment,
-	    std::shared_ptr<shared::PathEvaluator<OptionsType>> &path_evaluator,
+	    std::shared_ptr<shared::PathEvaluator<RobotType, OptionsType>> &path_evaluator,
 	    std::shared_ptr<shared::DynamicPathPlanner> &dynamic_path_planner):
 		options_(robot_options),
 		robot_environment_(robot_environment),
 		path_evaluator_(path_evaluator),		
 		dynamic_path_planner_(dynamic_path_planner) {
 		
-	}
+	}	
 	
 	void runSimulation(std::ofstream &os) {
 		for (size_t i = 0; i < options_->nRuns; i++) {
 			simulate(os);
 		}
-	}
-	
-	
+	}	
 	
 	void simulate(std::ofstream &os) {
 		bool canDoSimulation = true;
@@ -247,7 +245,7 @@ private:
 	
 	std::shared_ptr<shared::RobotEnvironment> robot_environment_;
 	
-	std::shared_ptr<shared::PathEvaluator<OptionsType>> path_evaluator_;
+	std::shared_ptr<shared::PathEvaluator<RobotType, OptionsType>> path_evaluator_;
 	
 };
 
