@@ -232,22 +232,12 @@ public:
 		}
 		
 		std::vector<double> propagation_result;
-		
-		/**cout << "=======================" << endl;
-		cout << "PROPAGATION" << endl;
-		utils::print_vector(current_state, "x_in");
-		utils::print_vector(action, "u_in");
-		cout << "control duration " << options_->control_duration << endl;
-		cout << "simulation step size: " << options_->simulation_step_size << endl;*/
-		
 		robot_environment_->getRobot()->propagateState(current_state,
 					                                   action,
 					                                   control_error,
 					                                   options_->control_duration,					                                   
 					                                   options_->simulation_step_size,
 					                                   propagation_result);
-		//utils::print_vector(propagation_result, "propagation result");
-		//cout << "==========================" << endl;
 		std::vector<double> next_state;
 		
 		//Check for collision
